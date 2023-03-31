@@ -1,0 +1,412 @@
+﻿﻿    <h2 align="center" id="SSE_ID"></h2>
+
+    <hr color="red"/>
+
+    <!-- chrome ID=Pairing_ID-->
+    <!-- 火狐 type=number-->
+    <style type="text/css"> 
+        input[ID=Pairing_ID]::-webkit-outer-spin-button, input[ID=Pairing_ID]::-webkit-inner-spin-button {
+            -webkit-appearance: none!important;margin:0;
+        };
+        
+        input[type=number]{
+                -moz-appearance:textfield;
+            };
+    </style>
+
+    <label for="Pairing">Pincode:</label>
+    <label for="Pairing" id="Pincode"></label>
+    <br> 
+    <label for="Pairing">Pairing_On_Network:Node_ID:</label>
+    <input type="number" id="Pairing_ID" name="node_id" placeholder="Node_ID" value='' step="1" oninput="if(value>4294967295)value=4294967295;if(value<1)value=1" required/>
+    <input type="button" id="Pairing" value="确认">
+
+    <hr color="red"/>
+
+    <!-- 标题标签 -->
+    <h3>Firmware Update Page</h3>
+
+    <!-- 标题标签 id选择器 -->
+    <h4 id="latest_firmware"></h4>
+
+    <!-- input标签 输入类型：文件 id选择器 文件类型 jquery控件不显示 事件会在域的内容改变时发生；事件也可用于单选框与复选框改变后触发的事件。 -->
+    <!-- none = 隐藏; inline = 显示 -->
+    <input type="file" id="selectedFile" accept=".bin" style="display: none;" onchange="myFunction()" />
+    
+    <input type="button" value="Browse..." onclick="document.getElementById('selectedFile').click();" />
+
+    <h4 id="file_info"></h4>
+    <input type='submit' id="upload_button" value='Update Firmware' onclick="updateFirmware()">
+
+    <div class="wifi_ap">
+        <hr color="red"/>
+        <h3>WiFi configuration page</h3>
+        <label for="ssid_text">SSID</label>
+        <input type="text" name="ssid_text" id="ssid_text" required>
+        <label for="pass_text">Password</label>
+        <input type="text" name="pass_text" id="pass_text" minlength="8" required>
+        <input type="button" id="set_config" value="SET">
+    </div>
+
+    <hr color="red"/>
+
+    <script type="text/javascript">
+        var sse_len = 10
+        var sse_Least = sse_len - 1;
+
+        var seconds = 10;
+        var theTimer;
+        var updateFirmwarecolor = 0;
+
+        var set_config_color = 0;
+        var exit_set_color;
+        var Pairing_color = 0;
+        var SysStatus;
+        var ADC_DATA = 0;
+        var es = new EventSource("/McuToHtml");
+        var Pincode_text;
+        //当连接上之后就会立即触发；
+        /*es.addEventListener('open',function(){
+            test++;
+            console.log("open" + test);
+        },false);
+        */
+        //服务器向客户端发送数据的默认事件，通过e.data可以获取到数据；
+        es.addEventListener('message',function(e){
+            console.log("message:" + e.data);
+            console.log("id:" + e.lastEventId);
+
+            if(e.lastEventId == 0){ //状态 0xFFFFFFFF = 0bit->wifi(=0 sta);1bit->boot_init(=1 开)；2bit->定时启动停止(=1 开)
+                                    /*  3...5bit->TimedMode 
+                                        <option value=1>时间模式</option>
+                                        <option value=2>定时循环关开</option>
+                                        <option value=3>定时开</option>
+                                        <option value=4>定时关</option>
+                                    */
+                                    /*6...19bit->weedoffon
+                                        
+                                    */
+
+                SysStatus = e.data;           
+                if((SysStatus & 0x20000000) == 0){
+                    SSE_ID.style.background='';
+                }
+                else{
+                    SSE_ID.style.background="green";
+                }    
+            }
+            else if(e.lastEventId == 1){
+                let ADC_temp  = e.data;
+                ADC_DATA = ADC_temp / 100;
+            }
+            else if(e.lastEventId == sse_Least){
+    
+            }
+            else{
+
+            }
+
+            document.getElementById("SSE_ID").innerHTML = "参数设定(SSE_ID:" + e.lastEventId + ")(电压:" + ADC_DATA + "V)";
+            
+            document.getElementById("Pincode").innerHTML = Pincode_text;
+            document.getElementById("Pincode").style.border="1px solid";
+            Pairing.style.background='';
+            Pairing_color = 0;
+
+        },false);
+
+        //自定义事件（SSE支持自定义事件）；
+        es.addEventListener('foo',function(e){
+            console.log("foo:" + e.data);
+        },false);
+
+        //当链接发生错误时触发。
+        /*es.addEventListener('error',function(){
+        console.info('error');
+        },false);*/
+
+        function myFunction() {
+            var x = document.getElementById("selectedFile");
+            var file = x.files[0];
+            date = new Date(file.lastModified);  // 
+            Y = date.getFullYear() + '-';
+            M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+            D = date.getDate();
+            h = date.getHours() + ':';
+            m = (date.getMinutes()  < 10 ?  '0'+(date.getMinutes()) : date.getMinutes()) + ':';
+            s = (date.getSeconds() < 10 ? '0'+(date.getSeconds()) : date.getSeconds());
+            document.getElementById("file_info").innerHTML = "File: " + file.name + "<br>" + "Size: " + file.size + "bytes" + "<br>" + "Latest Modified Date:" + Y + M + D + "&emsp;" + h + m + s;
+        }
+
+        function updateFirmware() {
+            // Form Data
+            var formData = new FormData();
+            var fileSelect = document.getElementById("selectedFile");
+            if (fileSelect.files && fileSelect.files.length == 1) {
+                var file = fileSelect.files[0];
+                formData.set("file", file, file.name);
+                // Http Request
+                var xhr = new XMLHttpRequest();
+                //Upload progress
+                xhr.upload.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        var percentComplete = (evt.loaded / evt.total) * 100;
+                        var x = Math.floor(percentComplete);
+                        //Do something with upload progress
+                        //console.log(x);
+                        document.getElementById("latest_firmware").innerHTML = "Progress:" + x + "%.";
+                        // After we send it all, lets ask the board if it went well. 
+                        if (x == 100) {
+                            // Lets ask the board for the upload resilt 
+                            getstatus();
+                        }
+                        if(updateFirmwarecolor == 1){
+                            //document.getElementById("upload_button").style.background="blue";
+                            upload_button.style.background="blue";
+                            updateFirmwarecolor = 0;
+                        }
+                        else{
+                            //document.getElementById("upload_button").style.background="red";
+                            upload_button.style.background="red";
+                            updateFirmwarecolor = 1;
+                        }
+                    } else {
+                        window.alert('total size is unknown')
+                    }
+                }, false);
+                xhr.open('POST', "/update");
+                xhr.responseType = "blob";
+                xhr.send(formData);
+            } 
+            else {
+                window.alert('Select A File First')
+            }
+        }
+        
+
+        // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/send
+        function getstatus() {
+            var xhr = new XMLHttpRequest();
+            var requestURL = "/status";
+            xhr.open('POST', requestURL, true);
+            //xhr.responseType = "blob";
+            //Send the proper header information along with the request
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+            xhr.onreadystatechange = function() { // Call a function when the state changes.在状态更改时调用函数。//绑定响应状态事件监听函数
+                if ((this.readyState == XMLHttpRequest.DONE) && (this.status == 200)) //监听readyState状态,监听HTTP状态码
+                {
+                    /* readyState属性值 
+                        返回值 说明
+                        0	  未初始化。表示对象已经建立，但是尚未初始化，尚未调用 open() 方法
+                        1	  初始化。表示对象已经建立，尚未调用 send() 方法
+                        2	  发送数据。表示 send() 方法已经调用，但是当前的状态及 HTTP 头未知
+                        3	  数据传送中。已经接收部分数据，因为响应及 HTTP 头不安全，这时通过 responseBody 和 responseText 获取部分数据会出现错误
+                        4	  完成。= XMLHttpRequest.DONE 数据接收完毕，此时可以通过 responseBody 和 responseText 获取完整的响应数据  
+                        
+                        readyState	存有 XMLHttpRequest 的状态。从 0 到 4 发生变化。
+                                    0: 请求未初始化
+                                    1: 服务器连接已建立
+                                    2: 请求已接收
+                                    3: 请求处理中
+                                    4: 请求已完成，且响应已就绪
+                        
+                        status	200: "OK"
+                                404: 未找到页面
+                    */
+                    var response = JSON.parse(xhr.responseText);
+                    console.log(xhr.responseText);
+                    if (response.Page_feed == 1)
+                    {
+                        location.replace("index");  
+                    }
+                    else{
+                        document.getElementById("latest_firmware").innerHTML = "Latest Firmware:  " + response.compile_date + " - " + response.compile_time
+                        // If flashing was complete it will return a 1, else -1
+                        // A return of 0 is just for information on the Latest Firmware request
+                        if (response.status == 1) {
+                            // Start the countdown timer
+                            console.log("Status Request Returned ok");
+                            // Set the delay time in seconds 
+                            seconds = 10;
+                            // Start the countdown timer
+                            console.log("starting the timer");
+                            // Since ESP32 reported ok, lets set a tier to reload this web page 
+                            // Lets give it 10 seconds to reboot and re-connect to the router. 
+                            theTimer = setInterval(function() {
+                                startMyTimer();
+                            }, 1000);
+                        } 
+                        else if (response.status == -1) {
+                            document.getElementById("latest_firmware").innerHTML = "!!! Upload Error !!!";
+                        }
+                        ssid_text.value = response.ssid_text;
+                        pass_text.value = response.pass_text;
+                        ADC_DATA = response.ADC_DATA / 100;
+                        Pincode_text = response.Pincode;
+
+                    }
+                }
+            }
+            console.log("Requestiing Upgrade Status");
+            xhr.send('status'); 
+        
+        }
+
+        function startMyTimer() {
+            console.log("timer" + seconds);
+            if (--seconds == 0) {
+                clearInterval(theTimer);
+                location.reload();
+            } 
+            else {
+                document.getElementById("latest_firmware").innerHTML = "Upgrade Complete, Rebooting in " + seconds + " Seconds.";
+            }
+        }
+
+        function download(value) {
+            var upload_path = "/download/" + value;
+            let xhr=new XMLHttpRequest();
+            xhr.open('POST' ,upload_path,true);
+            xhr.responsenType='blob';
+            xhr.onload=()=>{
+                //console.log("downloading" + xhr.response);
+                if(xhr.status==200){
+                    var blob = new Blob([xhr.response]);
+                    let url=window.URL || window.webkitURL || window.moxURL;
+                    let downloadHref = window.URL.createObjectURL(blob);
+                    let downloadLink = document.createElement('a');
+                    downloadLink.href = downloadHref;
+                    downloadLink.download = value;
+                    downloadLink.click();
+                    url.revokeObjectURL(downloadHref);
+                    //console.log("download:ok");
+                }
+            }
+            xhr.send();
+        }
+        
+        function HtmlToMcu(data) {
+                var xhr = new XMLHttpRequest();
+                var requestURL = "/HtmlToMcu";
+                xhr.open('POST', requestURL, true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                xhr.responseType = "text";
+                xhr.send(data);
+            } 
+
+        function McuToHtmlData(id_value){
+            var requestURL = "/McuToHtmlData/" + id_value;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', requestURL, true);
+           // xhr.responseType = "blob";
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+            xhr.onreadystatechange = function() { // Call a function when the state changes.在状态更改时调用函数。//绑定响应状态事件监听函数
+                if ((this.readyState == XMLHttpRequest.DONE) && (this.status == 200)) //监听readyState状态,监听HTTP状态码
+                {
+                    /* readyState属性值 
+                        返回值 说明
+                        0	  未初始化。表示对象已经建立，但是尚未初始化，尚未调用 open() 方法
+                        1	  初始化。表示对象已经建立，尚未调用 send() 方法
+                        2	  发送数据。表示 send() 方法已经调用，但是当前的状态及 HTTP 头未知
+                        3	  数据传送中。已经接收部分数据，因为响应及 HTTP 头不安全，这时通过 responseBody 和 responseText 获取部分数据会出现错误
+                        4	  完成。= XMLHttpRequest.DONE 数据接收完毕，此时可以通过 responseBody 和 responseText 获取完整的响应数据  
+                        
+                        readyState	存有 XMLHttpRequest 的状态。从 0 到 4 发生变化。
+                                    0: 请求未初始化
+                                    1: 服务器连接已建立
+                                    2: 请求已接收
+                                    3: 请求处理中
+                                    4: 请求已完成，且响应已就绪
+                        
+                        status	200: "OK"
+                                404: 未找到页面
+                    */
+                    var response = JSON.parse(xhr.responseText);
+                    console.log("Status Request Returned ok" + xhr.responseText);
+                    console.log(response.status + response.compile_time + response.compile_date);
+                    // Status Request Returned ok{"status":0,"compile_time":"16:39:37","compile_date":"Dec 31 2022"}
+                    //                          "{\"status\":0,\"compile_time\":\"%s\",\"compile_date\":\"%s\"}"
+                    //Status Request Returned ok{"status":0,"compile_time":"18:03:21","compile_date":"Dec 31 2022"}
+                }
+            }
+            xhr.send();
+        }
+
+        $(document).ready(function() {
+
+            $("#set_config").click(function() {
+                if(ssid_text.value != '')
+                {
+                    if(pass_text.value.length > 7){
+                        HtmlToMcu("ssid:" + ssid_text.value + "pass:" + pass_text.value);
+                    }
+                    else{
+                        alert('SSID空或Password少于8位\n');
+                    }
+                    console.log("ssid:" + ssid_text.value + "pass:" + pass_text.value);
+                    if(set_config_color == 1){
+                        //document.getElementById("set_config").style.background="blue";
+                        set_config.style.background="blue";
+                        set_config_color = 0;
+                    }
+                    else{
+                        //document.getElementById("set_config").style.background="red";
+                        set_config.style.background="red";
+                        set_config_color = 1;
+                    }
+                } 
+                else 
+                {
+                    let errorText = ''
+                    if(ssid_text.value == '') {
+                        errorText = 'Missing SSID\n';
+                    }
+                    alert(errorText);
+                }
+            });  
+
+           
+
+            $("#exit_set").click(function() {
+                if(exit_set_color == 1){
+                    exit_set.style.background='';
+                    exit_set_color = 0;
+                }
+                else{
+                    exit_set.style.background="green";
+                    exit_set_color = 1;
+                }
+                HtmlToMcu("exit_set:" + 170);
+                setTimeout(function () {
+                    location.reload(true);
+                    }, 10000);
+            });
+
+            $("#Page_feed").click(function() {
+                    location.replace("index");
+            });
+
+            $("#Pairing").click(function() {
+                if(Pairing_ID.value != '')
+                {
+                    if(set_config_color == 0){
+                        HtmlToMcu("Pairing:" + Pairing_ID.value);
+                        console.log("Pairing:" + Pairing_ID.value);
+                        Pairing.style.background="green";
+                        Pairing_color = 1;
+                    }
+                } 
+                else 
+                {
+                    let errorText = ''
+                    if(Pairing_ID.value == '') {
+                        errorText = 'Missing Pairing ID\n';
+                    }
+                    alert(errorText);
+                }
+            });
+
+        });//(document).ready(function()
+
+    </script>
+

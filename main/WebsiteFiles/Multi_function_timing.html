@@ -1,0 +1,449 @@
+﻿<!DOCTYPE html>
+<html lang='zh-cmn-Hans'>
+
+    <head>
+        <meta charset="UTF-8">
+        <title>多功能定时控制器</title>
+        <meta name='viewport' content='width=device-width, initial-scale=1' />
+        <meta http-equiv='refresh' content='300'>
+        <script src="jquery-3.4.1.min.js"></script>
+
+        <!-- chrome ID=Pairing_ID-->
+        <!-- 火狐 type=number-->
+        <style type="text/css"> 
+            input[ID=Pairing_ID]::-webkit-outer-spin-button, input[ID=Pairing_ID]::-webkit-inner-spin-button {
+                -webkit-appearance: none!important;margin:0;
+            };
+            
+            input[type=number]{
+                    -moz-appearance:textfield;
+                };
+        </style>
+        
+    </head>
+
+    <body  onload="getstatus();">
+        <h2 align="center" id="SSE_ID"></h2>
+
+        <div id="TimedOff">
+            <h5>浇水间隔：
+            <input type="number" id="TimedOffHour" value='24' step="1" oninput="if(value>1193)value=1193;if(value<0)value=0" required/>
+            时
+            <input type="number" id="TimedOffmin" value='0' step="1" oninput="if(value>((1193 - TimedOffHour.value) * 60))value=((1193 - TimedOffHour.value) * 60);if(value<0)value=0" required>
+            分
+            <input type="number" id="TimedOffsec" value='0' step="1" oninput="if(value>(4294800 - (TimedOffmin.value * 60) - (TimedOffHour.value * 3600)))value=(4294800 - (TimedOffmin.value * 60) - (TimedOffHour.value * 3600));if(value<0)value=0" required>
+            秒<font size=0 color="red">(全0一直开)</font>
+            </h5>
+        </div>
+
+        <div id="TimedOn">
+            <h5>浇水时间：
+            <input type="number" id="TimedOnHour" value=0 step="1" oninput="if(value>1193)value=1193;if(value<0)value=0" required>
+            时
+            <input type="number" id="TimedOnmin" value=0 step="1" oninput="if(value>((1193 - TimedOnHour.value) * 60))value=((1193 - TimedOnHour.value) * 60);if(value<0)value=0" required>
+            分
+            <input type="number" id="TimedOnsec" value=50 step="1" oninput="if(value>(4294800 - (TimedOnmin.value * 60) - (TimedOnHour.value * 3600)))value=(4294800 - (TimedOnmin.value * 60) - (TimedOnHour.value * 3600));if(value<0)value=0" required>
+            秒<font size=0 color="red">(全0一直关)</font>
+            </h5>
+        </div>
+        <input type="button" id="Confirm" value='确认'style="margin-left:30px;">
+        <input type="button" id="Time_onoff" value='停止' style="margin-left:30px;">
+        
+
+        <hr color="red"/>
+        <input type="button" id="Page_feed" value='参数设定' style="margin-left:30px;">
+        <input type="button" id="exit_set" value='退出设置' style="margin-left:30px;">
+
+        <script type="text/javascript">
+            
+            var sse_len = 10
+            var sse_Least = sse_len - 1;
+            var Time_onoffstatus = 85;// 170 0xaa运行
+            var SysStatus;
+            var es = new EventSource("/McuToHtml");
+            var exit_set_color;
+            var Confirm_color;
+            var ADC_DATA = 0;
+
+            //当连接上之后就会立即触发；
+            /*es.addEventListener('open',function(){
+                test++;
+                console.log("open" + test);
+            },false);
+            */
+            //服务器向客户端发送数据的默认事件，通过e.data可以获取到数据；
+            es.addEventListener('message',function(e){
+                console.log("message:" + e.data);
+                console.log("id:" + e.lastEventId);
+    
+                if(e.lastEventId == 0){ //状态 0xFFFFFFFF = 0bit->wifi(=0 sta);1bit->boot_init(=1 开)；2bit->定时启动停止(=1 开)
+                                        /*  3...5bit->TimedMode 
+                                            <option value=1>时间模式</option>
+                                            <option value=2>定时循环关开</option>
+                                            <option value=3>定时开</option>
+                                            <option value=4>定时关</option>
+                                        */
+                                        /*6...19bit->weedoffon
+                                            
+                                        */
+    
+                    SysStatus= e.data;    
+                    if((SysStatus & 0x10000000) == 0){  /*      */
+                        Time_onoff.value="停止";
+                        Time_onoff.style.background='';
+                        Time_onoffstatus = 85;
+                    }
+                    else{
+                        Time_onoff.value="运行";
+                        Time_onoff.style.background="green";
+                        Time_onoffstatus = 170;
+                    }        
+                    if((SysStatus & 0x20000000) == 0){
+                        SSE_ID.style.background='';
+                    }
+                    else{
+                        SSE_ID.style.background="green";
+                    }
+                }
+                else if(e.lastEventId == 1){
+                    let ADC_temp  = e.data;
+                    ADC_DATA = ADC_temp / 100;
+                }
+                else if(e.lastEventId == 4){//
+                    let hourdate = e.data;
+                    let Mindate = e.data;
+                    let Secdate = e.data;
+                    TimedOffHour.value = parseInt(hourdate / 3600);
+    
+                    let Min1 = Mindate % 3600;
+                    TimedOffmin.value = parseInt(Min1 / 60);
+                    
+                    let Sec1 = Secdate  % 3600;
+                    TimedOffsec.value = Sec1 % 60;
+                }
+                else if(e.lastEventId == 5){//
+                    let hourdate = e.data;
+                    let Mindate = e.data;
+                    let Secdate = e.data;
+                    TimedOnHour.value = parseInt(hourdate / 3600);
+    
+                    let Min1 = Mindate % 3600;
+                    TimedOnmin.value = parseInt(Min1 / 60);
+                    
+                    let Sec1 = Secdate  % 3600;
+                    TimedOnsec.value = Sec1 % 60;
+                }
+                else if(e.lastEventId == sse_Least){
+    
+                }
+                else{
+    
+                }
+                document.getElementById("SSE_ID").innerHTML = "多功能定时控制器(SSE_ID:" + e.lastEventId + ")(电压:" + ADC_DATA + "V)";
+                Confirm.style.background='';  
+
+            },false);
+    
+            //自定义事件（SSE支持自定义事件）；
+            es.addEventListener('foo',function(e){
+                console.log("foo:" + e.data);
+            },false);
+    
+            //当链接发生错误时触发。
+            /*es.addEventListener('error',function(){
+            console.info('error');
+            },false);*/
+
+            // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/send
+            function getstatus() {
+                var xhr = new XMLHttpRequest();
+                var requestURL = "/status";
+                xhr.open('POST', requestURL, true);
+                //xhr.responseType = "blob";
+                //Send the proper header information along with the request
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                xhr.onreadystatechange = function() { // Call a function when the state changes.在状态更改时调用函数。//绑定响应状态事件监听函数
+                    if ((this.readyState == XMLHttpRequest.DONE) && (this.status == 200)) //监听readyState状态,监听HTTP状态码
+                    {
+                        /* readyState属性值 
+                            返回值 说明
+                            0	  未初始化。表示对象已经建立，但是尚未初始化，尚未调用 open() 方法
+                            1	  初始化。表示对象已经建立，尚未调用 send() 方法
+                            2	  发送数据。表示 send() 方法已经调用，但是当前的状态及 HTTP 头未知
+                            3	  数据传送中。已经接收部分数据，因为响应及 HTTP 头不安全，这时通过 responseBody 和 responseText 获取部分数据会出现错误
+                            4	  完成。= XMLHttpRequest.DONE 数据接收完毕，此时可以通过 responseBody 和 responseText 获取完整的响应数据  
+                            
+                            readyState	存有 XMLHttpRequest 的状态。从 0 到 4 发生变化。
+                                        0: 请求未初始化
+                                        1: 服务器连接已建立
+                                        2: 请求已接收
+                                        3: 请求处理中
+                                        4: 请求已完成，且响应已就绪
+                            
+                            status	200: "OK"
+                                    404: 未找到页面
+                        */
+                        var response = JSON.parse(xhr.responseText);
+                        console.log(xhr.responseText);
+                        SysStatus = response.SysStatus;
+                        if((SysStatus & 0x10000000) == 0){  /*      */
+                            Time_onoff.value="停止";
+                            Time_onoff.style.background='';
+                            Time_onoffstatus = 85;
+                        }
+                        else{
+                            Time_onoff.value="运行";
+                            Time_onoff.style.background="green";
+                            Time_onoffstatus = 170;
+                        }
+
+                        let hourdate = response.sleep_Time;
+                        let Mindate = response.sleep_Time;
+                        let Secdate = response.sleep_Time;
+                        TimedOffHour.value = parseInt(hourdate / 3600);
+        
+                        let Min1 = Mindate % 3600;
+                        TimedOffmin.value = parseInt(Min1 / 60);
+                        
+                        let Sec1 = Secdate  % 3600;
+                        TimedOffsec.value = Sec1 % 60;
+                        
+
+                        hourdate = response.AutolWateringTime;
+                        Mindate = response.AutolWateringTime;
+                        Secdate = response.AutolWateringTime;
+                        TimedOnHour.value = parseInt(hourdate / 3600);
+    
+                        Min1 = Mindate % 3600;
+                        TimedOnmin.value = parseInt(Min1 / 60);
+
+                        Sec1 = Secdate  % 3600;
+                        TimedOnsec.value = Sec1 % 60;
+                        ADC_DATA = response.ADC_DATA / 100;
+                    }
+                }
+                console.log("Requestiing Upgrade Status");
+                xhr.send('status'); 
+            
+            }
+
+            function HtmlToMcu(data) {
+                var xhr = new XMLHttpRequest();
+                var requestURL = "/HtmlToMcu";
+                xhr.open('POST', requestURL, true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                xhr.responseType = "text";
+                xhr.send(data);
+            }  
+    
+            function McuToHtmlData(id_value){
+                var requestURL = "/McuToHtmlData/" + id_value;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', requestURL, true);
+               // xhr.responseType = "blob";
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                xhr.onreadystatechange = function() { // Call a function when the state changes.在状态更改时调用函数。//绑定响应状态事件监听函数
+                    if ((this.readyState == XMLHttpRequest.DONE) && (this.status == 200)) //监听readyState状态,监听HTTP状态码
+                    {
+                        /* readyState属性值 
+                            返回值 说明
+                            0	  未初始化。表示对象已经建立，但是尚未初始化，尚未调用 open() 方法
+                            1	  初始化。表示对象已经建立，尚未调用 send() 方法
+                            2	  发送数据。表示 send() 方法已经调用，但是当前的状态及 HTTP 头未知
+                            3	  数据传送中。已经接收部分数据，因为响应及 HTTP 头不安全，这时通过 responseBody 和 responseText 获取部分数据会出现错误
+                            4	  完成。= XMLHttpRequest.DONE 数据接收完毕，此时可以通过 responseBody 和 responseText 获取完整的响应数据  
+                            
+                            readyState	存有 XMLHttpRequest 的状态。从 0 到 4 发生变化。
+                                        0: 请求未初始化
+                                        1: 服务器连接已建立
+                                        2: 请求已接收
+                                        3: 请求处理中
+                                        4: 请求已完成，且响应已就绪
+                            
+                            status	200: "OK"
+                                    404: 未找到页面
+                        */
+                        var response = JSON.parse(xhr.responseText);
+                        console.log("Status Request Returned ok" + xhr.responseText);
+                        console.log(response.status + response.compile_time + response.compile_date);
+                        // Status Request Returned ok{"status":0,"compile_time":"16:39:37","compile_date":"Dec 31 2022"}
+                        //                          "{\"status\":0,\"compile_time\":\"%s\",\"compile_date\":\"%s\"}"
+                        //Status Request Returned ok{"status":0,"compile_time":"18:03:21","compile_date":"Dec 31 2022"}
+                    }
+                }
+                xhr.send();
+            }
+    
+            $(document).ready(function() {
+                $("#Confirm").click(function() {
+                    if(Confirm_color == 1){
+                        Confirm.style.background='';
+                        Confirm_color = 0;
+                    }
+                    else{
+                        Confirm.style.background="green";
+                        Confirm_color = 1;
+                    }
+                    if(((TimedOffHour.value != '') || (TimedOffmin.value != '') || (TimedOffsec.value != '')) && 
+                        ((TimedOnHour.value != '') || (TimedOnmin.value != '') || (TimedOnsec.value != '')))
+                    {
+                        Time_onoffstatus = 170;
+                        Time_onoff.value="运行";
+                        Time_onoff.style.background="green";
+
+                        if(TimedOffHour.value == '')
+                        TimedOffHour.value = 0;
+                        if(TimedOffmin.value == '')
+                            TimedOffmin.value = 0;
+                        if(TimedOffsec.value == '')
+                            TimedOffsec.value = 0;   
+
+                        if(TimedOnHour.value == '')
+                            TimedOnHour.value = 0;
+                        if(TimedOnmin.value == '')
+                            TimedOnmin.value = 0;
+                        if(TimedOnsec.value == '')
+                            TimedOnsec.value = 0;   
+                            
+                        var xhr = new XMLHttpRequest();
+                        var requestURL = "/HtmlToMcu";
+                        xhr.open('POST', requestURL, true);
+                        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                        xhr.responseType = "blob";
+                        xhr.send("TimedOffHour:" + TimedOffHour.value + ':' + TimedOffmin.value + ':' + TimedOffsec.value + ':' 
+                                + TimedOnHour.value + ':' + TimedOnmin.value + ':' + TimedOnsec.value + ':' + '170');
+                    } 
+                    else 
+                    {
+                        var errorText = ''
+                        if((TimedOffHour.value == '') || (TimedOffmin.value == '') || (TimedOffsec.value == '') || 
+                        (TimedOnHour.value == '') || (TimedOnmin.value == '') || (TimedOnsec.value == ''))
+                        {
+                            errorText = 'Missing\n';
+                        }
+                        alert(errorText);
+                    }
+                });
+                $("#Time_onoff").click(function() {//    TimedOffHour  TimedOffmin TimedOffsec TimedOnHour TimedOnmin TimedOnsec
+                    if(((TimedOffHour.value != '') || (TimedOffmin.value != '') || (TimedOffsec.value != '')) && 
+                        ((TimedOnHour.value != '') || (TimedOnmin.value != '') || (TimedOnsec.value != '')))
+                    {
+                        if(Time_onoffstatus == 170){
+                            Time_onoffstatus = 85;
+                            Time_onoff.value="停止";
+                            Time_onoff.style.background='';
+    
+                            if(TimedOffHour.value == '')
+                            TimedOffHour.value = 0;
+                            if(TimedOffmin.value == '')
+                                TimedOffmin.value = 0;
+                            if(TimedOffsec.value == '')
+                                TimedOffsec.value = 0;   
+    
+                            if(TimedOnHour.value == '')
+                                TimedOnHour.value = 0;
+                            if(TimedOnmin.value == '')
+                                TimedOnmin.value = 0;
+                            if(TimedOnsec.value == '')
+                                TimedOnsec.value = 0;   
+                                
+                            var xhr = new XMLHttpRequest();
+                            var requestURL = "/HtmlToMcu";
+                            xhr.open('POST', requestURL, true);
+                            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                            xhr.responseType = "blob";
+                            xhr.send("TimedOffHour:" + TimedOffHour.value + ':' + TimedOffmin.value + ':' + TimedOffsec.value + ':' 
+                                    + TimedOnHour.value + ':' + TimedOnmin.value + ':' + TimedOnsec.value + ':' + '85');
+                        }
+                        else{
+                            Time_onoffstatus = 170;
+                            Time_onoff.value="运行";
+                            Time_onoff.style.background="green";
+    
+                            if(TimedOffHour.value == '')
+                            TimedOffHour.value = 0;
+                            if(TimedOffmin.value == '')
+                                TimedOffmin.value = 0;
+                            if(TimedOffsec.value == '')
+                                TimedOffsec.value = 0;   
+    
+                            if(TimedOnHour.value == '')
+                                TimedOnHour.value = 0;
+                            if(TimedOnmin.value == '')
+                                TimedOnmin.value = 0;
+                            if(TimedOnsec.value == '')
+                                TimedOnsec.value = 0;   
+                                
+                            var xhr = new XMLHttpRequest();
+                            var requestURL = "/HtmlToMcu";
+                            xhr.open('POST', requestURL, true);
+                            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded;charset=utf-8");//设置为表单方式提交
+                            xhr.responseType = "blob";
+                            xhr.send("TimedOffHour:" + TimedOffHour.value + ':' + TimedOffmin.value + ':' + TimedOffsec.value + ':' 
+                                    + TimedOnHour.value + ':' + TimedOnmin.value + ':' + TimedOnsec.value + ':' + '170');
+                        }
+    
+                        //HtmlToMcu("TimedOffHour:" + TimedOffHour.value);
+                        console.log("TimedOffHour:" + TimedOffHour.value);
+    
+                        //setTimeout(HtmlToMcu("TimedOffmin:" + TimedOffmin.value),3000);
+                        //HtmlToMcu("TimedOffmin:" + TimedOffmin.value);
+                        console.log("TimedOffmin:" + TimedOffmin.value);
+    
+                       // setTimeout(HtmlToMcu("TimedOffsec:" + TimedOffsec.value),6000);
+                        //HtmlToMcu("TimedOffsec:" + TimedOffsec.value);
+                        console.log("TimedOffsec:" + TimedOffsec.value);
+    
+                        //setTimeout(HtmlToMcu("TimedOnHour:" + TimedOnHour.value),9000);
+                        //HtmlToMcu("TimedOnHour:" + TimedOnHour.value);
+                        console.log("TimedOnHour:" + TimedOnHour.value);
+    
+                        //setTimeout(HtmlToMcu("TimedOnmin:" + TimedOnmin.value),12000);
+                        //HtmlToMcu("TimedOnmin:" + TimedOnmin.value);
+                        console.log("TimedOnmin:" + TimedOnmin.value);
+    
+                        //setTimeout(HtmlToMcu("TimedOnsec:" + TimedOnsec.value),15000);
+                        //HtmlToMcu("TimedOnsec:" + TimedOnsec.value);
+                        console.log("TimedOnsec:" + TimedOnsec.value);
+                    } 
+                    else 
+                    {
+                        var errorText = ''
+                        if((TimedOffHour.value == '') || (TimedOffmin.value == '') || (TimedOffsec.value == '') || 
+                        (TimedOnHour.value == '') || (TimedOnmin.value == '') || (TimedOnsec.value == ''))
+                        {
+                            errorText = 'Missing\n';
+                        }
+                        alert(errorText);
+                    }
+                });
+    
+                $("#exit_set").click(function() {
+                    if(exit_set_color == 1){
+                        exit_set.style.background='';
+                        exit_set_color = 0;
+                    }
+                    else{
+                        exit_set.style.background="green";
+                        exit_set_color = 1;
+                    }
+                    HtmlToMcu("exit_set:" + 170);
+                    setTimeout(function () {
+                        location.reload(true);
+                        }, 10000);
+                });
+                
+                $("#Page_feed").click(function() {
+                    HtmlToMcu("page_feed:" + 170);
+                    console.log("page_feed:" + 170);
+                    location.replace("/");
+                });
+
+            });//(document).ready(function()
+    
+        </script>
+
+
+    </body>
+
+</html>

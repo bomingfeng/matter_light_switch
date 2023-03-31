@@ -1,0 +1,21 @@
+{
+    "project_name":       "bootloader",
+    "project_path":       "/home/esp-matter/esp/esp-idf/components/bootloader/subproject",
+    "build_dir":          "/home/esp-matter/esp/Project/ai_thinker_esp32c3_no_ble/light_switch/test_board/build/bootloader",
+    "config_file":        "/home/esp-matter/esp/Project/ai_thinker_esp32c3_no_ble/light_switch/test_board/sdkconfig",
+    "config_defaults":    "",
+    "app_elf":            "bootloader.elf",
+    "app_bin":            "bootloader.bin",
+    "git_revision":       "v4.4.3-dirty",
+    "target":             "esp32c3",
+    "rev":                "",
+    "phy_data_partition": "",
+    "monitor_baud" :      "115200",
+    "monitor_toolprefix": "riscv32-esp-elf-",
+    "config_environment" : {
+        "COMPONENT_KCONFIGS" : "/home/esp-matter/esp/esp-idf/components/efuse/Kconfig;/home/esp-matter/esp/esp-idf/components/esp32c3/Kconfig;/home/esp-matter/esp/esp-idf/components/esp_common/Kconfig;/home/esp-matter/esp/esp-idf/components/esp_hw_support/Kconfig;/home/esp-matter/esp/esp-idf/components/esp_system/Kconfig;/home/esp-matter/esp/esp-idf/components/freertos/Kconfig;/home/esp-matter/esp/esp-idf/components/hal/Kconfig;/home/esp-matter/esp/esp-idf/components/log/Kconfig;/home/esp-matter/esp/esp-idf/components/newlib/Kconfig;/home/esp-matter/esp/esp-idf/components/spi_flash/Kconfig",
+        "COMPONENT_KCONFIGS_PROJBUILD" : "/home/esp-matter/esp/esp-idf/components/bootloader/Kconfig.projbuild;/home/esp-matter/esp/esp-idf/components/esp_rom/Kconfig.projbuild;/home/esp-matter/esp/esp-idf/components/esptool_py/Kconfig.projbuild;/home/esp-matter/esp/esp-idf/components/partition_table/Kconfig.projbuild"
+    },
+    "build_components" : [ "bootloader", "bootloader_support", "efuse", "esp32c3", "esp_common", "esp_hw_support", "esp_rom", "esp_system", "esptool_py", "freertos", "hal", "log", "main", "micro-ecc", "newlib", "partition_table", "riscv", "soc", "spi_flash", "" ],
+    "build_component_paths" : [ "/home/esp-matter/esp/esp-idf/components/bootloader", "/home/esp-matter/esp/esp-idf/components/bootloader_support", "/home/esp-matter/esp/esp-idf/components/efuse", "/home/esp-matter/esp/esp-idf/components/esp32c3", "/home/esp-matter/esp/esp-idf/components/esp_common", "/home/esp-matter/esp/esp-idf/components/esp_hw_support", "/home/esp-matter/esp/esp-idf/components/esp_rom", "/home/esp-matter/esp/esp-idf/components/esp_system", "/home/esp-matter/esp/esp-idf/components/esptool_py", "/home/esp-matter/esp/esp-idf/components/freertos", "/home/esp-matter/esp/esp-idf/components/hal", "/home/esp-matter/esp/esp-idf/components/log", "/home/esp-matter/esp/esp-idf/components/bootloader/subproject/main", "/home/esp-matter/esp/esp-idf/components/bootloader/subproject/components/micro-ecc", "/home/esp-matter/esp/esp-idf/components/newlib", "/home/esp-matter/esp/esp-idf/components/partition_table", "/home/esp-matter/esp/esp-idf/components/riscv", "/home/esp-matter/esp/esp-idf/components/soc", "/home/esp-matter/esp/esp-idf/components/spi_flash", "" ]
+}
