@@ -1,0 +1,6 @@
+    APP_event_group = xEventGroupCreate();
+    LED_Task_init();
+    xTaskCreatePinnedToCore(led_instructions, "led_instructions", 4096, NULL, ESP_TASK_PRIO_MIN + 5, NULL,tskNO_AFFINITY);
+#define CONFIG_LED_Lights_GPIO 10
+#define CONFIG_Lights_GPIO 18
+#define CONFIG_detectIR_GPIO 19

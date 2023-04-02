@@ -1,1 +1,0 @@
-cmd='/home/esp-matter/esp/esp-matter/connectedhomeip/connectedhomeip/.environment/cipd/packages/pigweed/gn;--root=/home/esp-matter/esp/esp-matter/connectedhomeip/connectedhomeip/config/esp32;gen;--check;--fail-on-unused-args;/home/esp-matter/esp/Project/ai_thinker_esp32c3_no_ble/light_switch/test_board/build/esp-idf/chip'
